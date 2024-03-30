@@ -1,6 +1,10 @@
 # Design Approach
 
-Describe the approach you took to design your block construction program, explain all the key concepts of creating a valid block.
+## Check Structure of Transactions
+
+First of all we need to check the structure of the transaction which includes version, locktime, inputs and outputs.
+
+
 
 
 
