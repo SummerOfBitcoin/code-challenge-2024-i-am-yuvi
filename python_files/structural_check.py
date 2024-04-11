@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 
 
 def check_transaction(tx_data):
@@ -23,80 +24,79 @@ def check_transaction(tx_data):
     return True  # Passes basic checks
 
 
-def validate_vin(vin):
-    # Validates a single vin element with specific checks
+def validate_vin(vin_list):
+    # Validates a list of vin elements with specific checks
+    for vin in vin_list:
+        # Check txid
+        if not vin.get("txid") or not isinstance(vin["txid"], str):
+            return False, "txid is empty or invalid type"
 
-    # Check txid
-    if not vin.get("txid") or not isinstance(vin["txid"], str):
-        return False, "txid is empty or invalid type"
+        # Check vout
+        if not vin.get("vout") or not isinstance(vin["vout"], int):
+            return False, "vout is empty or invalid type"
 
-    # Check vout
-    if not vin.get("vout") or not isinstance(vin["vout"], int):
-        return False, "vout is empty or invalid type"
+        # Check prevout
+        prevout = vin.get("prevout")
+        if not prevout:
+            return False, "prevout is missing"
+        required_prevout_fields = [
+            "scriptpubkey",
+            "scriptpubkey_asm",
+            "scriptpubkey_type",
+            "scriptpubkey_address",
+            "value",
+        ]
+        for field in required_prevout_fields:
+            if field not in prevout:
+                return False, f"prevout is missing '{field}'"
 
-    # Check prevout
-    prevout = vin.get("prevout")
-    if not prevout:
-        return False, "prevout is missing"
-    required_prevout_fields = [
-        "scriptpubkey",
-        "scriptpubkey_asm",
-        "scriptpubkey_type",
-        "scriptpubkey_address",
-        "value",
-    ]
-    for field in required_prevout_fields:
-        if field not in prevout:
-            return False, f"prevout is missing '{field}'"
+        # Check scriptsig/scriptsig_asm and witness if applicable
+        scriptsig = vin.get("scriptsig")
+        scriptsig_asm = vin.get("scriptsig_asm")
 
-    # Check scriptsig/scriptsig_asm and witness if applicable
-    scriptsig = vin.get("scriptsig")
-    scriptsig_asm = vin.get("scriptsig_asm")
+        if not scriptsig and not scriptsig_asm:
+            # Both empty, check for witness
+            if not vin.get("witness"):
+                return (
+                    False,
+                    "Both scriptsig and scriptsig_asm are empty, and witness is missing",
+                )
 
-    if not scriptsig and not scriptsig_asm:
-        # Both empty, check for witness
-        if not vin.get("witness"):
-            return (
-                False,
-                "Both scriptsig and scriptsig_asm are empty, and witness is missing",
-            )  # (If both scriptsig and scriptsig_asm have data, we ignore witness)
+        # Check is_coinbase
+        if not isinstance(vin.get("is_coinbase"), bool):
+            return False  # is_coinbase must be true or false
 
-    # Check is_coinbase
-    if not isinstance(vin.get("is_coinbase"), bool):
-        return False  # is_coinbase must be true or false
-
-    # Check sequence
-    if not vin.get("sequence") or not isinstance(vin["sequence"], int):
-        return False  # sequence is empty or invalid type
+        # Check sequence
+        if not vin.get("sequence") or not isinstance(vin["sequence"], int):
+            return False  # sequence is empty or invalid type
 
     # All checks passed
     return True
 
 
-def validate_vout(vout):
-    # Validates a single vout element with specific checks
+def validate_vout(vout_list):
+    # Validates a list of vout elements with specific checks
+    for vout in vout_list:
+        # Check non-emptiness of fields
+        required_fields = [
+            "scriptpubkey",
+            "scriptpubkey_asm",
+            "scriptpubkey_type",
+            "scriptpubkey_address",
+        ]
+        for field in required_fields:
+            if not vout.get(field) or not isinstance(vout[field], str):
+                return False, f"'{field}' is empty or invalid type"
 
-    # Check non-emptiness of fields
-    required_fields = [
-        "scriptpubkey",
-        "scriptpubkey_asm",
-        "scriptpubkey_type",
-        "scriptpubkey_address",
-    ]
-    for field in required_fields:
-        if not vout.get(field) or not isinstance(vout[field], str):
-            return False, f"'{field}' is empty or invalid type"
-
-    # Check value is non-empty integer
-    if not vout.get("value") or not isinstance(vout["value"], int):
-        return False, "value is empty or invalid type"
+        # Check value is non-empty integer
+        if not vout.get("value") or not isinstance(vout["value"], int):
+            return False, "value is empty or invalid type"
 
     # All checks passed
     return True, "vout is valid"
 
 
-def check_structure_transactions(mempool_folder):
-
+def check_structure_transactions(mempool_folder, valid_folder):
     for filename in os.listdir(mempool_folder):
         if filename.endswith(".json"):
             filepath = os.path.join(mempool_folder, filename)
@@ -105,6 +105,8 @@ def check_structure_transactions(mempool_folder):
                     tx_data = json.load(f)
                 if check_transaction(tx_data):
                     print(f"Transaction: {filename} - Valid Structure")
+                    # Move the valid transaction file to the mempool_valid folder
+                    shutil.copy(filepath, os.path.join(valid_folder, filename))
                 else:
                     print(f"Transaction: {filename} - Missing or Invalid Fields")
             except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -146,11 +148,9 @@ def validate_signature_script(script):
     return True
 
 
-# Example usage:
+# Specify the input and output folders
+mempool_folder = "./mempool"
+valid_folder = "./mempool_valid"
 
-script = "OP_DUP OP_HASH160 0x1234567890abcdef1234567890abcdef12345678 OP_EQUALVERIFY OP_CHECKSIG"
-
-if validate_signature_script(script):
-    print("The signature script is valid.")
-else:
-    print("The signature script is invalid.")
+# Check the structure of transactions in the mempool folder
+check_structure_transactions(mempool_folder, valid_folder)
