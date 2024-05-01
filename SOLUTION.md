@@ -159,6 +159,8 @@ Verifying a P2WPKH transaction is a bit different than the traditional one. We n
 **NOTE: hash256(x) = sha256(sha256(x))**
 
 
+## Creating Block
+
 
 
 
@@ -169,6 +171,10 @@ Verifying a P2WPKH transaction is a bit different than the traditional one. We n
 - Transaction Structure validation: [structural_check.py](./python_files/structural_check.py)
 
 - Creating TXID and Updating the JSoN Structure: [create_txid.py](./python_files/create_txid.py)
+
+- Verifying P2PKH transaction: [p2pkh_validation](./python_files/p2pkh_validation.py)
+
+- Verifying P2WPKH Transaction: [p2wpkh_validation](./python_files/p2wpkh_validation.py)
 
 
 # Result and Performance
