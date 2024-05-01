@@ -72,6 +72,94 @@ Step by step implementation for creating TXID and then updating the json file in
    - Write the `updated_data` dictionary to the file using `json.dump()`.
    - Specify an indentation of 2 spaces using `indent=2` for better readability.
 
+## Verifying the transactions
+
+During the verification process I found out that the total number of P2WPKH were lots(around 3000-4000) of them.
+
+And also the P2TR were lots. So verifying the P2TR is out of the scope of this project. The P2TR is considered valid by default.
+
+## Verifying P2PKH Transactions
+
+1. Parse the transaction JSON:
+
+2. Load the transaction JSON data into a Python dictionary called tx.
+
+
+3. Iterate over each input (vin) in the transaction:
+
+4. For each input, retrieve the scriptPubKey and scriptSig from the transaction data.
+
+
+5. Extract the public key hash from the scriptPubKey:
+
+6. The public key hash is located in the scriptPubKey field, typically starting from the 7th character and ending 4 characters before the end.
+
+
+7. Extract the signature and public key from the scriptSig:
+
+8. The scriptSig contains the signature and public key.
+The signature length is obtained by converting the 3rd and 4th characters of the scriptSig from hexadecimal to integer.
+
+9. The signature starts after the length and continues for the specified number of bytes.
+The public key starts immediately after the signature.
+
+
+### Verify the public key hash:
+
+1. Hash the extracted public key using SHA-256.
+
+2. Apply the RIPEMD-160 hash function to the SHA-256 hash to obtain the public key hash.
+
+3. Compare the newly computed public key hash with the one extracted from the scriptPubKey.
+   
+4. If the hashes don't match, print an error message indicating a public key hash mismatch and return False.
+
+
+### Verify the signature:
+
+1. Decode the extracted public key hash from hexadecimal to bytes.
+   
+2. Create a VerifyingKey object using the extracted public key and the SECP256k1 elliptic curve.
+   
+3. Verify the signature using the verify_digest method of the VerifyingKey object.
+   
+4. The verify_digest method takes the signature, the decoded public key hash, and the hash function (SHA-256) as arguments.
+   
+5. If the signature verification fails, print an error message indicating the failure and return False.
+
+
+6. If all inputs pass the verification steps without any errors:
+
+7. Return True to signify a valid transaction.
+
+
+
+## Verifying P2WPKH Transactions
+
+Verifying a P2WPKH transaction is a bit different than the traditional one. We need to create a message of the transaction and later verify the message with public key and Elliptic Curve.
+
+1. Creating the preimage of the transaction: 
+   - preimage = version + hash256(inputs(txid+vout)) + hash256(sequence) + inputs + scriptcode + amount + sequence + hash256(outputs) + locktime
+
+   - Script Code is basically is a modified version of the ScriptPubKey from the output we're spending. To create the scriptcode, we need to find the ScriptPubKey on the output we want to spend, extract the public key hash, and place it in to the following P2PKH ScriptPubKey structure:
+   
+      **scriptcode = 1976a914{publickeyhash}88ac**
+
+   - Now we need add the signature hash type to the end if preimage which is SIGHASH_ALL(0x01)
+   - Finally we create message which is 
+      
+      **message = hash256(preimage)** 
+
+
+2. Now verify the message and signature created for the transaction using ECDSA.
+
+3. If it is successful then return true.
+
+
+**NOTE: hash256(x) = sha256(sha256(x))**
+
+
+
 
 
 
